@@ -1,5 +1,6 @@
 package byAJ.Securex.configs;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -9,6 +10,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import byAJ.Securex.models.SSUserDetailsService;
+import byAJ.Securex.repositories.UserRepository;
 
 @Configuration
 @EnableWebSecurity
@@ -18,19 +21,34 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter{
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
-                .authorizeRequests().anyRequest().authenticated();
-        http
-                .formLogin().failureUrl("/login?error")
-                .defaultSuccessUrl("/")
-                .loginPage("/login")
-                .permitAll()
+                .authorizeRequests()
+                	.antMatchers("/").permitAll()
+                	.antMatchers("/css/**").permitAll()
+                	.antMatchers("/books/list").permitAll()
+                	.antMatchers("/books/edit/**").hasRole("ADMIN")
+                	.anyRequest().authenticated()
+        		.and()
+        			.formLogin().loginPage("/login").permitAll()
+        		.and()
+                	.logout()
+                	.logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
+                	.logoutSuccessUrl("/login").permitAll()
                 .and()
-                .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/login")
-                .permitAll();
+                	.httpBasic();
     }
+    
+    @Autowired private UserRepository userRepository;
 
     @Override
-    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth.inMemoryAuthentication().withUser("user").password("password").roles("USER");
+    public UserDetailsService userDetailsServiceBean() throws Exception{
+    	return new SSUserDetailsService(userRepository);
     }
+    
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(userDetailsServiceBean());
+        
+    }
+    
+
 }
